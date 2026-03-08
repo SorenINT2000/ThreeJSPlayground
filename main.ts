@@ -9,9 +9,10 @@ import {
 } from 'three';
 
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
+import textureUrl from './resources/images/texture.jpg';
 
 const loader = new TextureLoader();
-const texture = loader.load( 'resources/images/texture.jpg' );
+const texture = loader.load( textureUrl );
 
 const scene = new Scene();
 
