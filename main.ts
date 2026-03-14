@@ -6,18 +6,38 @@ import {
     MeshBasicMaterial,
     Mesh,
     TextureLoader,
+    AmbientLight,
+    Color,
+    Vector2,
 } from 'three';
 
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
-import textureUrl from './public/texture.jpg';
-
-const loader = new TextureLoader();
-const texture = loader.load( textureUrl );
+import { FirstPersonControls } from 'three/examples/jsm/Addons.js';
+import { vec2 } from 'three/tsl';
 
 const scene = new Scene();
 
+const textureLoader = new TextureLoader();
+const gltfLoader = new GLTFLoader();
+
+
+const texture = textureLoader.load('texture.jpg');
+gltfLoader.load(
+    'snowman_amanda_losneck.glb',
+    ( gltf ) => { scene.add(gltf.scene); console.log(gltf.scene.children[0].children[1]) },
+    ( xhr ) => console.log(`${xhr.loaded / xhr.total * 100}% loaded`),
+    ( error ) => console.error(error)
+);
+
+const light = new AmbientLight( 0x404040 ); // soft white light
+scene.add(light);
+
+
+
 const camera = new PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
 const controls = new PointerLockControls(camera, document.body);
+// const controls = new FirstPersonControls(camera, document.body)
 // Lock mouse on click
 document.addEventListener('click', () => {
     controls.lock();
@@ -27,7 +47,6 @@ camera.position.z = 5;
 
 const renderer = new WebGLRenderer({ antialias: true });
 const canvas = renderer.domElement;
-const ctx = canvas.getContext('2d');
 
 canvas.setAttribute("tabIndex", "0");
 document.body.appendChild(canvas);
@@ -68,6 +87,7 @@ let S = false;
 let W = false;
 
 canvas.addEventListener('keydown', (e) => {
+    if (e.repeat) return; // ignore repeated events from holding down a key
     switch (e.code) {
         case "KeyA":
             A = true;
@@ -123,23 +143,29 @@ canvas.addEventListener('keyup', (e) => {
     }
 });
 
-function cameraNeedsMovement(A: boolean, D: boolean, Lshift: boolean, Space: boolean, S: boolean, W: boolean): boolean {
-    return A !== D || Lshift !== Space || S !== W;
-}
 
 renderer.setAnimationLoop((time) => {
+    // Todo: see if you can add an event listener for this instead of checking it every time
     if (resizeRendererToDisplaySize(renderer)) {
         const canvas = renderer.domElement;
         camera.aspect = canvas.clientWidth / canvas.clientHeight;
         camera.updateProjectionMatrix();
     }
 
-    if (cameraNeedsMovement(A, D, Lshift, Space, S, W)) {
-        camera.translateX(mvt * (Number(D) - Number(A)));
-        camera.translateY(mvt * (Number(Space) - Number(Lshift)));
-        camera.translateZ(mvt * (Number(S) - Number(W)));
-        camera.updateProjectionMatrix()
-    }
+    const movementVector = new Vector2(0, 0)
+    if (W !== S)
+        movementVector.y = W ? 1 : -1;
+    if (A !== D)
+        movementVector.x = D ? 1 : -1;
+
+    // normalize movementVector
+    movementVector.normalize();
+    
+    controls.moveForward(Number(movementVector.y) * mvt)
+    controls.moveRight(Number(movementVector.x) * mvt)
+    
+    if (Space !== Lshift)
+        camera.position.y += (Number(Space) - Number(Lshift)) * mvt;
 
     cube.rotation.x = time / 2000;
     cube.rotation.y = time / 1000;
